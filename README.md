@@ -6,8 +6,8 @@
 
 Before the merge, the coursework had two separate Windows Forms applications:
 
-- **Login-and-Register**: login, registration and dashboard, originally using Microsoft Access/OleDb.
-- **EmployeeDetails**: employee CRUD, using SQL Server LocalDB/SqlClient.
+* **Login-and-Register**: login, registration and dashboard, originally using Microsoft Access/OleDb.
+* **EmployeeDetails**: employee CRUD, using SQL Server LocalDB/SqlClient.
 
 The final solution is one Windows Forms application named `CompanyApp`, hosted from the former EmployeeDetails project. It uses one SQL Server LocalDB database named `dbCompanyApp` containing both `dbo.Users` and `dbo.Emp_details`.
 
@@ -19,42 +19,44 @@ Logout clears the session and opens a new login form.
 
 ### 2. The six conflicts and how they were resolved
 
-1. **Different namespaces**  
+1. **Different namespaces**
    Imported forms were placed in the host namespace `EmployeeDetails`. The project root namespace remains `EmployeeDetails` as required, while the assembly name is `CompanyApp`.
 
-2. **Different data providers**  
+2. **Different data providers**
    The Access/OleDb side was ported to SQL Server using `System.Data.SqlClient`, `SqlConnection`, `SqlCommand`, `SqlDataAdapter`, and named `@parameters`. No Access provider is used.
 
-3. **Two databases**  
+3. **Two databases**
    The final application uses one database, `dbCompanyApp`, for authentication and employee data.
 
-4. **Different framework versions**  
+4. **Different framework versions**
    The host project targets .NET Framework 4.8.
 
-5. **Two Program.cs / two Main() methods**  
+5. **Two Program.cs / two Main() methods**
    Only the host `Program.cs` remains. It starts the application with `Application.Run(new frmLogin())`.
 
-6. **Hidden Access-file dependency**  
+6. **Hidden Access-file dependency**
    The Access `.mdb` database is removed from the final application. Authentication now reads from `dbo.Users` in SQL Server, so cleaning the solution does not depend on an untracked `.mdb` file in `bin\Debug`.
 
 ### 3. Unified database design
 
 `Schema.sql` creates:
 
-- `dbo.Users`
-  - `UserID INT IDENTITY(1,1) PRIMARY KEY`
-  - `Username NVARCHAR(50) NOT NULL UNIQUE`
-  - `Password NVARCHAR(200) NOT NULL`
-  - `CreatedAt DATETIME DEFAULT GETDATE()`
+* `dbo.Users`
 
-- `dbo.Emp_details`
-  - `EmpId NVARCHAR(50) PRIMARY KEY`
-  - `EmpName NVARCHAR(100) NOT NULL`
-  - `EmpAge INT NOT NULL`
-  - `EmpContact NVARCHAR(20)`
-  - `EmpGender NVARCHAR(10)`
-  - `CreatedBy INT NULL`
-  - foreign key from `CreatedBy` to `dbo.Users(UserID)`
+  * `UserID INT IDENTITY(1,1) PRIMARY KEY`
+  * `Username NVARCHAR(50) NOT NULL UNIQUE`
+  * `Password NVARCHAR(200) NOT NULL`
+  * `CreatedAt DATETIME DEFAULT GETDATE()`
+
+* `dbo.Emp_details`
+
+  * `EmpId NVARCHAR(50) PRIMARY KEY`
+  * `EmpName NVARCHAR(100) NOT NULL`
+  * `EmpAge INT NOT NULL`
+  * `EmpContact NVARCHAR(20)`
+  * `EmpGender NVARCHAR(10)`
+  * `CreatedBy INT NULL`
+  * foreign key from `CreatedBy` to `dbo.Users(UserID)`
 
 `CreatedBy` is nullable so migrated employee rows can remain valid even when their original creator is unknown.
 
@@ -73,15 +75,15 @@ VALUES (N'username_here', N'password_here');
 
 Each imported Windows Forms form travels as three related files:
 
-- `.cs` for event/code logic
-- `.Designer.cs` for controls and layout
-- `.resx` for resources
+* `.cs` for event/code logic
+* `.Designer.cs` for controls and layout
+* `.resx` for resources
 
 The merged project contains:
 
-- `frmLogin.cs`, `frmLogin.Designer.cs`, `frmLogin.resx`
-- `frmRegister.cs`, `frmRegister.Designer.cs`, `frmRegister.resx`
-- `frmDashboard.cs`, `frmDashboard.Designer.cs`, `frmDashboard.resx`
+* `frmLogin.cs`, `frmLogin.Designer.cs`, `frmLogin.resx`
+* `frmRegister.cs`, `frmRegister.Designer.cs`, `frmRegister.resx`
+* `frmDashboard.cs`, `frmDashboard.Designer.cs`, `frmDashboard.resx`
 
 The employee form was renamed from `Form1` to `frmEmployee`.
 
@@ -91,16 +93,16 @@ The login/register implementation uses a dedicated `User.cs` data-access class.
 
 `User.cs` implements:
 
-- `ValidateLogin(username, password)` -> returns `UserID` or `0`
-- `UsernameExists(username)` -> uses `ExecuteScalar`
-- `RegisterUser(username, password)` -> returns the new `UserID`
+* `ValidateLogin(username, password)` -> returns `UserID` or `0`
+* `UsernameExists(username)` -> uses `ExecuteScalar`
+* `RegisterUser(username, password)` -> returns the new `UserID`
 
 SQL commands use named parameters such as `@Username` and `@Password`.
 
 `Session.cs` stores:
 
-- `Session.UserID`
-- `Session.Username`
+* `Session.UserID`
+* `Session.Username`
 
 and provides `Session.Clear()`.
 
@@ -156,14 +158,19 @@ During development, Visual Studio produced the following build error:
 Could not copy "obj\Debug\CompanyApp.exe" to "bin\Debug\CompanyApp.exe".
 Exceeded retry count of 10. Failed.
 The file is locked by: "EmployeeDetails (25840)"
-
 ```
-The problem was caused by an already-running EmployeeDetails process that was using the executable file. Because the executable was locked by that process, Visual Studio could not replace it with the newly built CompanyApp.exe.
 
-The issue was resolved by stopping the running EmployeeDetails process and then rebuilding the project. After the file lock was released, the project built and ran successfully.
+The problem was caused by an already-running `EmployeeDetails` process that was using the executable file. Because the executable was locked by that process, Visual Studio could not replace it with the newly built `CompanyApp.exe`.
+
+The issue was resolved by stopping the running `EmployeeDetails` process and then rebuilding the project. After the file lock was released, the project built and ran successfully.
+
 ### 10. Why one database is better than two
 
-One database gives the application a single source of truth. Authentication data and employee data can be linked with a real foreign key instead of keeping separate files that can drift out of sync. The `CreatedBy` relationship is a practical example: `dbo.Emp_details.CreatedBy` points directly to `dbo.Users.UserID`. Because migrated rows may have a NULL creator, the employee grid uses a `LEFT JOIN`, preserving every employee while showing the username whenever a valid creator exists. This design is easier to maintain, query, back up, and keep consistent than two unrelated databases.
+One database gives the application a single source of truth. Authentication data and employee data can be linked with a real foreign key instead of keeping separate files that can drift out of sync.
+
+The `CreatedBy` relationship is a practical example: `dbo.Emp_details.CreatedBy` points directly to `dbo.Users.UserID`. Because migrated rows may have a NULL creator, the employee grid uses a `LEFT JOIN`, preserving every employee while showing the username whenever a valid creator exists.
+
+This design is easier to maintain, query, back up, and keep consistent than two unrelated databases.
 
 ### 11. Screenshots for submission
 
@@ -175,22 +182,21 @@ Add the following screenshots before final submission:
 4. Working flow: Login -> Dashboard -> Manage Employees -> CRUD.
 5. Employee grid showing the creator username.
 
-> Important: screenshots must be real screenshots from the completed project. Do not use placeholder or fabricated screenshots.
+> **Important:** Screenshots must be real screenshots from the completed project. Do not use placeholder or fabricated screenshots.
 
 ## Final repository checklist
 
-- `CompanyApp.sln`
-- `CompanyApp.csproj`
-- `App.config`
-- `README.md`
-- `Schema.sql`
-- `User.cs`
-- `Session.cs`
-- login/register/dashboard files
-- `frmEmployee` files
-- `Employee.cs`
-- `.gitignore`
-- no `bin/`, `obj/`, `.vs/`
-- no `.mdb` or `.accdb`
-- no `System.Data.OleDb`
-
+* `CompanyApp.sln`
+* `CompanyApp.csproj`
+* `App.config`
+* `README.md`
+* `Schema.sql`
+* `User.cs`
+* `Session.cs`
+* Login/Register/Dashboard files
+* `frmEmployee` files
+* `Employee.cs`
+* `.gitignore`
+* No `bin/`, `obj/`, or `.vs/`
+* No `.mdb` or `.accdb`
+* No `System.Data.OleDb`
