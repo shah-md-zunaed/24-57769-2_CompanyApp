@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# Build output
+Debug/
+Release/
+
+# User-specific files
+*.user
+*.suo
+
+# Access/database files that must not be committed
+*.mdb
+*.accdb
+
+# Temporary files
+*.tmp
+*.log
