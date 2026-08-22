@@ -150,8 +150,15 @@ A `LEFT JOIN` is required because migrated employee rows may have `CreatedBy = N
 
 ### 9. Real build issue and fix
 
-A merge conflict occurred in `.gitignore` when the local project history was combined with the existing GitHub repository history. The conflict was resolved by keeping one unified `.gitignore` that excludes `.vs`, `bin`, `obj`, Access database files, and user-specific files.
+During development, Visual Studio produced the following build error:
 
+```text
+Could not copy "obj\Debug\CompanyApp.exe" to "bin\Debug\CompanyApp.exe".
+Exceeded retry count of 10. Failed.
+The file is locked by: "EmployeeDetails (25840)"
+The problem was caused by an already-running EmployeeDetails process that was using the executable file. Because the executable was locked by that process, Visual Studio could not replace it with the newly built CompanyApp.exe.
+
+The issue was resolved by stopping the running EmployeeDetails process and then rebuilding the project. After the file lock was released, the project built and ran successfully.
 ### 10. Why one database is better than two
 
 One database gives the application a single source of truth. Authentication data and employee data can be linked with a real foreign key instead of keeping separate files that can drift out of sync. The `CreatedBy` relationship is a practical example: `dbo.Emp_details.CreatedBy` points directly to `dbo.Users.UserID`. Because migrated rows may have a NULL creator, the employee grid uses a `LEFT JOIN`, preserving every employee while showing the username whenever a valid creator exists. This design is easier to maintain, query, back up, and keep consistent than two unrelated databases.
